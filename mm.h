@@ -19,5 +19,12 @@ typedef struct {
     char *id2;      /* login ID of second member */
 } team_t;
 
+typedef struct metaDataHeader{
+    struct metaDataHeader * prev;
+    struct metaDataHeader * next;
+    size_t size;
+} header_t;
+
+extern header_t header;
 extern team_t team;
 

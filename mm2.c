@@ -50,6 +50,14 @@ team_t team = {
 
 void *init_mem_sbrk_break = NULL;
 
+int main()
+{
+	header_t h1={NULL, NULL, 0};
+	int x= sizeof(h1);
+	int x2= sizeof(header_t *);
+	printf("x=%d, x2=%d\n",x,x2);
+	return 0;
+}
 int mm_init(void)
 {
 	
