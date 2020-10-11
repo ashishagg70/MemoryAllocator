@@ -20,11 +20,20 @@ typedef struct {
 } team_t;
 
 typedef struct metaDataHeader{
-    struct metaDataHeader * prev;
-    struct metaDataHeader * next;
     size_t size;
 } header_t;
 
+typedef struct FreeListNode{
+    struct FreeListNode * prev;
+    struct FreeListNode * next;
+    struct FreeListNode * parent;
+    size_t maxLeft;
+    size_t maxRight;
+    size_t size;
+    char* selfAddress;
+
+} info_t;
+extern info_t infoNode;
 extern header_t header;
 extern team_t team;
 

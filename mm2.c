@@ -49,18 +49,29 @@ team_t team = {
  */
 
 void *init_mem_sbrk_break = NULL;
-
-int main()
+info_t *head=NULL;
+int hsize;
+/*int main()
 {
-	header_t h1={NULL, NULL, 0};
+	mem_init();
+	char* addr=mem_sbrk(28);
+	
+	info_t* info=addr;
+	header_t* h1=addr+sizeof(info);
+	h1->size=10;
+	info->maxLeft=10;
 	int x= sizeof(h1);
-	int x2= sizeof(header_t *);
-	printf("x=%d, x2=%d\n",x,x2);
+	int x2= sizeof(info);
+	
+	printf("addr=%ld\n",addr);
+	printf("addr=%ld\n",(info_t*)addr+1);
+	printf("x=%d, x2=%d\n",h1->size,info->maxLeft);
+	mem_deinit();
 	return 0;
-}
+}*/
 int mm_init(void)
 {
-	
+	hsize=sizeof(header_t);
 	//This function is called every time before each test run of the trace.
 	//It should reset the entire state of your malloc or the consecutive trace runs will give wrong answer.	
 	
@@ -102,6 +113,16 @@ void *mm_malloc(size_t size)
 
 void mm_free(void *ptr)
 {
+	header_t *header=(char *)ptr - hsize;
+	info_t * info = ptr;
+	info->selfAddress=ptr;
+	info->size=header->size;
+	if(head==NULL){
+		head=info;
+	}
+	else{
+		insert(head, info);
+	}
 	/* 
 	 * Searches the previously allocated node for memory block with base address ptr.
 	 * 
@@ -143,7 +164,101 @@ void *mm_realloc(void *ptr, size_t size)
 	
 }
 
+/*
+ * This function will be called when new free block arrives.
+*/
+void insert(info_t * root, info_t * newFreeNode ){
+	if((root->selfAddress+root->size==newFreeNode->selfAddress-hsize) || (newFreeNode->selfAddress+newFreeNode->size==root->selfAddress-hsize)){
+		coalesce(root, newFreeNode);
+	}
+	else{
+		if(newFreeNode->selfAddress<root->selfAddress)
+		{
+			if(root->prev==NULL)
+			{
+				root->prev=newFreeNode;
+				newFreeNode->parent=root;
 
+			}
+			else{
+				insert(root->prev, newFreeNode);
+			}
+			
+		}
+		else{
+			if(root->next==NULL)
+			{
+				root->next=newFreeNode;
+				newFreeNode->parent=root;
+
+			}
+			else{
+				insert(root->next, newFreeNode);
+			}
+		}
+
+
+	}
+	adjustMaxSizes(root);
+
+}
+
+void adjustMaxSizes(info_t* root){
+
+}
+
+void coalesce(info_t * root, info_t* newFreeNode ){
+	if(root->selfAddress+root->size==newFreeNode->selfAddress-hsize){
+		root->size+=newFreeNode->size+hsize;
+		//check if successor is insuccession
+		if(root->next!=NULL){
+			info_t *successor=root->next;
+			if(successor->prev==NULL){
+				if(root->selfAddress+root->size==successor->selfAddress-hsize){
+					root->size+=successor->size+hsize;
+					successor->parent->next=successor->next;
+				}
+				return;
+			}
+			while(successor->prev!=NULL){
+				successor=successor->prev;
+			}
+			if(root->selfAddress+root->size==successor->selfAddress-hsize){
+				root->size+=successor->size+hsize;
+				successor->parent->prev=successor->next;
+			}
+
+		}
+		
+	}
+	else if(newFreeNode->selfAddress+newFreeNode->size==root->selfAddress-hsize){
+		root->selfAddress=newFreeNode->selfAddress;
+		root->size+=newFreeNode->size+hsize;
+		if(root->prev!=NULL){
+			info_t * predecessor = root->prev;
+			if(predecessor->next==NULL){
+				if(predecessor->selfAddress+predecessor->size==root->selfAddress-hsize){
+					root->selfAddress=predecessor->selfAddress;
+					root->size+=predecessor->size+hsize;
+					predecessor->parent->prev=predecessor->prev;
+				}
+				return;
+			}
+			while(predecessor->next!=NULL)
+				predecessor = predecessor->next;
+			if(predecessor->selfAddress+predecessor->size==root->selfAddress-hsize){
+				root->selfAddress=predecessor->selfAddress;
+				root->size+=predecessor->size+hsize;
+				predecessor->parent->next=predecessor->prev;
+			}
+		}
+
+
+	}
+
+}
+
+//https://engold.ui.ac.ir/~m.rezaei/research/ieee00.pdf
 
 
 
