@@ -211,9 +211,72 @@ void * findHole(info_t* root, size_t holeSize){
 
 void * splitNode(info_t * root, size_t holeSize){
 	memcpy(root->selfAddress, root, minBlock);
-
-	info_t * curr=root;
+	if(root->parent!=NULL){
+		if(root->parent->prev==root){
+			root->parent->prev=root->selfAddress;
+		}
+		else if(root->parent->next==root){
+			root->parent->next=root->selfAddress;
+		}
+	}
+	root=root->selfAddress;
+	root->size-=(holeSize+hsize);
+	header_t * hole=root->selfAddress+root->size;
+	hole->size=holeSize;
 	//adjust sizes
+	deleteAdujstMaxSizes(root);
+	//adjusting done
+	
+	
+	
+	return (char *)hole+hsize;
+
+}
+
+void deleteNode(info_t *root){
+	//adust max
+	if(root->next==NULL){
+		if(root->parent==NULL)
+			head=root->prev;
+		else{
+			if(root->parent->prev==root)
+				root->parent->prev=root->prev;
+			else if(root->parent->next==root)
+				root->parent->next=root->prev;
+		}
+		deleteAdujstMaxSizes(root);
+	}
+	else{
+		if(root->next->prev==NULL){
+			root->next->prev=root->prev;
+			root->next->maxLeft=root->maxLeft;
+			if(root->parent->next==root){
+				root->parent->next=root->next;
+			}
+			else if(root->parent->prev==root){
+				root->parent->prev=root->next;
+			}
+			deleteAdujstMaxSizes(root->next);
+		}
+		else{
+			info_t * successor=root->next->prev;
+			while(successor->prev!=NULL)
+				successor = successor->prev;
+			successor->prev=root->prev;
+			successor->maxLeft=root->maxLeft;
+			if(root->parent->next==root){
+				root->parent->next=root->next;
+			}
+			else if(root->parent->prev==root){
+				root->parent->prev=root->next;
+			}
+			deleteAdujstMaxSizes(successor->prev);	
+		}
+	}
+}
+
+void deleteAdujstMaxSizes(info_t * node){
+	info_t * curr=node;
 	while(curr->parent!=NULL){
 		if(curr->parent->prev==curr){
 			if(curr->parent->maxLeft==curr->maxLeft || curr->parent->maxLeft==curr->maxRight)
@@ -241,33 +304,7 @@ void * splitNode(info_t * root, size_t holeSize){
 		}
 		curr=curr->parent;
 	}
-	//adjusting done
-	if(root->parent!=NULL){
-		if(root->parent->prev==root){
-			root->parent->prev=root->selfAddress;
-		}
-		else if(root->parent->next==root){
-			root->parent->next=root->selfAddress;
-		}
-	}
-	root=root->selfAddress;
-	root->size-=(holeSize+hsize);
-	header_t * hole=root->selfAddress+root->size;
-	hole->size=holeSize;
-	return (char *)hole+hsize;
 
-}
-
-void deleteNode(info_t *root){
-	if(root->prev==NULL && root->next==NULL){
-		if(root==head)
-			head=NULL;
-		else{
-			if(root->parent->prev==root){
-
-			}
-		}
-	}
 }
 /*
  * This function will be called when new free block arrives.

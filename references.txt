@@ -1,0 +1,12 @@
+
+1.https://engold.ui.ac.ir/~m.rezaei/research/ieee00.pdf
+2. https://www.programiz.com/dsa/avl-tree
+3. https://www.techiedelight.com/deletion-from-bst/#:~:text=Instead%2C%20choose%20either%20its%20in,of%20the%20first%20two%20cases.
+4. https://www.tutorialspoint.com/c_standard_library/c_function_memcpy.htm
+5. http://www.cs.umd.edu/class/fall2017/cmsc420-0301/lecnotes/memmanage.pdf
+6. https://www.cs.princeton.edu/courses/archive/spring11/cos217/lectures/20DynamicMemory2.pdf
+7. https://users.cs.duke.edu/~chase/cps310/p0.html
+8. http://www.vishalchovatiya.com/how-do-malloc-free-work-in-c/
+9. https://arjunsreedharan.org/post/148675821737/memory-allocators-101-write-a-simple-memory
+10. https://medium.com/@andrestc/implementing-malloc-and-free-ba7e7704a473
+11 https://stackoverflow.com/questions/20752551/working-with-a-union-of-structs-in-c
