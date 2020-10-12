@@ -8,6 +8,8 @@
  *
  * NOTE TO STUDENTS: Replace this header comment with your own header
  * comment that gives a high level description of your solution.
+ * 
+ * keep inmind min size for block to keep the info_t in freeblock
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -50,7 +52,8 @@ team_t team = {
 
 void *init_mem_sbrk_break = NULL;
 info_t *head=NULL;
-int hsize;
+size_t hsize;
+size_t minBlock;
 /*int main()
 {
 	mem_init();
@@ -72,6 +75,7 @@ int hsize;
 int mm_init(void)
 {
 	hsize=sizeof(header_t);
+	minBlock=sizeof(info_t);
 	//This function is called every time before each test run of the trace.
 	//It should reset the entire state of your malloc or the consecutive trace runs will give wrong answer.	
 	
@@ -103,9 +107,23 @@ void *mm_malloc(size_t size)
 	if(size <= 0){		// Invalid request size
 		return NULL;
 	}
+	if(size<minBlock)
+		size=minBlock;
+	if(head!=NULL){
+		char * hole=findHole(head, size);
+		if(hole!=NULL)
+			return hole;
+	}
+	
+	size+=hsize;
+	
 	size = ((size+7)/8)*8;		//size alligned to 8 bytes
 	
-	return mem_sbrk(size);		//mem_sbrk() is wrapper function for the sbrk() system call. 
+	char * newAllocAddress=(char*)mem_sbrk(size);
+	header_t *header=newAllocAddress;
+	header->size=size-hsize;
+
+	return newAllocAddress+hsize;		//mem_sbrk() is wrapper function for the sbrk() system call. 
 								//Please use mem_sbrk() instead of sbrk() otherwise the evaluation results 
 								//may give wrong results
 }
@@ -164,6 +182,93 @@ void *mm_realloc(void *ptr, size_t size)
 	
 }
 
+void * findHole(info_t* root, size_t holeSize){
+
+	if(root->size<holeSize && root->maxLeft<holeSize && root->maxRight<holeSize)
+		return NULL;
+	info_t * curr=root;
+	while(curr!=NULL && curr->size<holeSize){
+		if(curr->maxLeft>=holeSize){
+			curr=curr->prev;
+		}
+		else if(curr->maxRight>=holeSize){
+			curr=curr->next;
+		}
+	}
+	char * hole =NULL;
+	if(curr->size>=hsize+holeSize+minBlock){
+		hole = splitNode(curr, holeSize);
+	}
+	else{
+		header_t *h = (char*)curr->selfAddress - hsize;
+		h->size=curr->size;
+		hole = curr->selfAddress;
+		deleteNode(curr);
+	}
+	return hole;
+
+}
+
+void * splitNode(info_t * root, size_t holeSize){
+	memcpy(root->selfAddress, root, minBlock);
+
+	info_t * curr=root;
+	//adjust sizes
+	while(curr->parent!=NULL){
+		if(curr->parent->prev==curr){
+			if(curr->parent->maxLeft==curr->maxLeft || curr->parent->maxLeft==curr->maxRight)
+				break;
+			else{
+				curr->parent->maxLeft=curr->maxLeft;
+				if(curr->parent->maxLeft<curr->maxRight)
+					curr->parent->maxLeft=curr->maxRight;
+				if(curr->parent->maxLeft<curr->size)
+					curr->parent->maxLeft=curr->size;
+			}
+		}
+		else if(curr->parent->next==curr){
+			if(curr->parent->maxRight==curr->maxLeft || curr->parent->maxRight==curr->maxRight)
+				break;
+			else{
+				curr->parent->maxRight=curr->maxLeft;
+				if(curr->parent->maxRight<curr->maxRight)
+					curr->parent->maxRight=curr->maxRight;
+				if(curr->parent->maxRight<curr->size)
+					curr->parent->maxRight=curr->size;
+
+			}
+			
+		}
+		curr=curr->parent;
+	}
+	//adjusting done
+	if(root->parent!=NULL){
+		if(root->parent->prev==root){
+			root->parent->prev=root->selfAddress;
+		}
+		else if(root->parent->next==root){
+			root->parent->next=root->selfAddress;
+		}
+	}
+	root=root->selfAddress;
+	root->size-=(holeSize+hsize);
+	header_t * hole=root->selfAddress+root->size;
+	hole->size=holeSize;
+	return (char *)hole+hsize;
+
+}
+
+void deleteNode(info_t *root){
+	if(root->prev==NULL && root->next==NULL){
+		if(root==head)
+			head=NULL;
+		else{
+			if(root->parent->prev==root){
+
+			}
+		}
+	}
+}
 /*
  * This function will be called when new free block arrives.
 */
@@ -177,6 +282,7 @@ void insert(info_t * root, info_t * newFreeNode ){
 			if(root->prev==NULL)
 			{
 				root->prev=newFreeNode;
+				root->maxLeft=newFreeNode->size;
 				newFreeNode->parent=root;
 
 			}
@@ -189,6 +295,7 @@ void insert(info_t * root, info_t * newFreeNode ){
 			if(root->next==NULL)
 			{
 				root->next=newFreeNode;
+				root->maxRight=newFreeNode->size;
 				newFreeNode->parent=root;
 
 			}
@@ -204,7 +311,14 @@ void insert(info_t * root, info_t * newFreeNode ){
 }
 
 void adjustMaxSizes(info_t* root){
-
+	if(root->prev!=NULL && root->maxLeft<root->prev->size)
+		root->maxLeft=root->prev->size;
+	if(root->next!=NULL && root->maxLeft<root->prev->maxLeft)
+		root->maxLeft=root->prev->maxLeft;
+	if(root->prev!=NULL && root->maxRight<root->next->size)
+		root->maxRight=root->next->size;
+	if(root->next!=NULL && root->maxRight<root->next->maxRight)
+		root->maxRight=root->next->maxRight;
 }
 
 void coalesce(info_t * root, info_t* newFreeNode ){
@@ -257,8 +371,6 @@ void coalesce(info_t * root, info_t* newFreeNode ){
 	}
 
 }
-
-//https://engold.ui.ac.ir/~m.rezaei/research/ieee00.pdf
 
 
 
