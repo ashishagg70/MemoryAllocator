@@ -29,6 +29,8 @@ void coalesce(info_t * root, info_t* newFreeNode );
 void initializeInfoBlock(info_t* info);
 void copyStructure(info_t *source, info_t* destination);
 void printInorder(info_t * root) ;
+int printTreeSize(info_t * root) ;
+void printpreorder(info_t * root) ;
 /*********************************************************
  * NOTE TO STUDENTS: Before you do anything else, please
  * provide your team information in the following struct.
@@ -87,6 +89,7 @@ int mm_init(void)
 	hsize=((hsize+7)/8)*8;
 	minBlock=sizeof(info_t);
 	head=NULL;
+		
 	//This function is called every time before each test run of the trace.
 	//It should reset the entire state of your malloc or the consecutive trace runs will give wrong answer.	
 	
@@ -122,8 +125,10 @@ void *mm_malloc(size_t size)
 	}
 	if(size<minBlock)
 		size=minBlock;
-	printInorder(head);
+	printpreorder(head);
+	printf("stuck in malloc\n");
 	if(head!=NULL){
+		printf("head%lu\n", head->selfAddress);
 		size_t holeSize=((size+7)/8)*8;
 		char * hole=findHole(head, holeSize);
 		if(hole!=NULL)
@@ -159,11 +164,12 @@ void mm_free(void *ptr)
 		head=info;
 	}
 	else{
-		printf("before adding tree");
-		printInorder(head);
+		printf("before adding tree\n");
+		//printInorder(head);
 		insert(head, info);
-		printf("after adding tree");
-		printInorder(head);
+		printf("after adding tree\n");
+		printf("treesize: %d", printTreeSize(head));
+		//printInorder(head);
 	}
 	/* 
 	 * Searches the previously allocated node for memory block with base address ptr.
@@ -227,13 +233,15 @@ void * findHole(info_t* root, size_t holeSize){
 			curr=curr->next;
 		}
 	}
+	printf("\nhole choosen to be deleted: %lu\n", curr->selfAddress);
 	char * hole =NULL;
 	if(curr->size>=hsize+holeSize+minBlock){
-		printf("here\n");
+		printf("splitting starting\n");
 		hole = splitNode(curr, holeSize);
 		printf("splitsuccessful\n");
 	}
 	else{
+		printf("no split direct delete");
 		header_t *h = (char*)curr->selfAddress - hsize;
 		h->size=curr->size;
 		hole = curr->selfAddress;
@@ -252,6 +260,7 @@ void copyStructure(info_t *source, info_t* destination){
 	destination->size=source->size;
 }
 void * splitNode(info_t * root, size_t holeSize){
+	printf("in splitnode\n");
 	printf("\nsplit block new address(root->selfAddress): %lu\n", root->selfAddress);
 	printf("split block address(root): %lu\n", root);
 	printf("split block size: %d\n", root->size);
@@ -278,16 +287,13 @@ void * splitNode(info_t * root, size_t holeSize){
 	root->size-=(holeSize+hsize);
 	header_t * hole=root->selfAddress+root->size;
 	hole->size=holeSize;
-	printf("\nIt should be same(root->selfAddress): %lu\n", root->selfAddress);
-	printf("\nhead: %lu\n", head);
-	printf("splitted hole ek dum start address: %lu\n", hole);
-	printf("splitted hole address: %lu\n", (char *)hole+hsize);
 	//adjust sizes
 	deleteAdujstMaxSizes(root);
 	//adjusting done
+	printInorder(head);
 	
 	
-	
+	printf("out splitnode\n");
 	return (char *)hole+hsize;
 
 }
@@ -296,8 +302,23 @@ void printInorder(info_t * root)
     if (root == NULL) 
         return; 
     printInorder(root->prev); 
-    printf("maxLeft: %d, maxright: %d, start: %lu, end: %lu, size: %d, left: %lu, right: %lu, parent: %lu\n", root->maxLeft,root->maxRight, root->selfAddress, root->selfAddress+root->size, root->size, root->prev,root->next, root->parent);
+    printf("maxLeft: %5d, maxright: %5d, start: %8lu, end: %8lu, size: %5d, left: %8lu, right: %8lu, parent: %8lu\n", root->maxLeft,root->maxRight, root->selfAddress, root->selfAddress+root->size, root->size, root->prev,root->next, root->parent);
     printInorder(root->next); 
+} 
+void printpreorder(info_t * root) 
+{ 
+    if (root == NULL) 
+        return; 
+	printf("maxLeft: %5d, maxright: %5d, start: %8lu, end: %8lu, size: %5d, left: %8lu, right: %8lu, parent: %8lu\n", root->maxLeft,root->maxRight, root->selfAddress, root->selfAddress+root->size, root->size, root->prev,root->next, root->parent);
+    printpreorder(root->prev); 
+    printpreorder(root->next); 
+} 
+int printTreeSize(info_t * root) 
+{ 
+   if (root == NULL)  
+        return 0;  
+    else
+        return(printTreeSize(root->prev) + 1 + printTreeSize(root->next));
 } 
 void deleteNode(info_t *root){
 	//adust max
@@ -305,10 +326,16 @@ void deleteNode(info_t *root){
 		if(root->parent==NULL)
 			head=root->prev;
 		else{
-			if(root->parent->prev==root)
+			if(root->parent->prev==root){
 				root->parent->prev=root->prev;
-			else if(root->parent->next==root)
+				if(root->prev==NULL)
+					root->parent->maxLeft=0;
+			}
+			else if(root->parent->next==root){
 				root->parent->next=root->prev;
+				if(root->prev==NULL)
+					root->parent->maxRight=0;
+			}
 		}
 		printf("right is null");
 		deleteAdujstMaxSizes(root);
@@ -319,9 +346,13 @@ void deleteNode(info_t *root){
 			root->next->maxLeft=root->maxLeft;
 			if(root->parent->next==root){
 				root->parent->next=root->next;
+				if(root->next==NULL)
+					root->parent->maxRight=0;
 			}
 			else if(root->parent->prev==root){
 				root->parent->prev=root->next;
+				if(root->next==NULL)
+					root->parent->maxLeft=0;
 			}
 			deleteAdujstMaxSizes(root->next);
 		}
@@ -333,9 +364,13 @@ void deleteNode(info_t *root){
 			successor->maxLeft=root->maxLeft;
 			if(root->parent->next==root){
 				root->parent->next=root->next;
+				if(root->next==NULL)
+					root->parent->maxRight=0;
 			}
 			else if(root->parent->prev==root){
 				root->parent->prev=root->next;
+				if(root->next==NULL)
+					root->parent->maxLeft=0;
 			}
 			deleteAdujstMaxSizes(successor->prev);	
 		}
@@ -343,12 +378,17 @@ void deleteNode(info_t *root){
 }
 
 void deleteAdujstMaxSizes(info_t * node){
-	printf("here %lu\n", node->selfAddress);
+	//printf("here %lu\n", node->selfAddress);
 	info_t * curr=node;
+	
 	while(curr->parent!=NULL){
+		printf("in deleteAdujstMaxSizes: %lu, curr->size: %d\n", curr->selfAddress, curr->size);
 		if(curr->parent->prev==curr){
-			if(curr->parent->maxLeft==curr->maxLeft || curr->parent->maxLeft==curr->maxRight)
+			if(curr->parent->maxLeft==curr->maxLeft || curr->parent->maxLeft==curr->maxRight){
+				printf("adjust break\n");
 				break;
+			}
+				
 			else{
 				curr->parent->maxLeft=curr->maxLeft;
 				if(curr->parent->maxLeft<curr->maxRight)
@@ -358,10 +398,12 @@ void deleteAdujstMaxSizes(info_t * node){
 			}
 		}
 		else if(curr->parent->next==curr){
-			if(curr->parent->maxRight==curr->maxLeft || curr->parent->maxRight==curr->maxRight)
+			if(curr->parent->maxRight==curr->maxLeft || curr->parent->maxRight==curr->maxRight){
+				printf("adjust break\n");
 				break;
+			}
 			else{
-				printf("here\n");
+				//printf("here2\n");
 				curr->parent->maxRight=curr->maxLeft;
 				if(curr->parent->maxRight<curr->maxRight)
 					curr->parent->maxRight=curr->maxRight;
@@ -373,19 +415,19 @@ void deleteAdujstMaxSizes(info_t * node){
 		}
 		curr=curr->parent;
 	}
-
+	printf("out deleteAdujstMaxSizes\n");
 }
 /*
  * This function will be called when new free block arrives.
 */
 void insert(info_t * root, info_t * newFreeNode ){
-	printf("insert\n");
+	//printf("insert\n");
 	if((root->selfAddress+root->size==newFreeNode->selfAddress-hsize) || (newFreeNode->selfAddress+newFreeNode->size==root->selfAddress-hsize)){
 		coalesce(root, newFreeNode);
 		printf("after coalesce\n");
 	}
 	else{
-		printf("no coalesce\n");
+		//printf("no coalesce\n");
 		if(newFreeNode->selfAddress<root->selfAddress)
 		{
 			if(root->prev==NULL)
@@ -402,7 +444,7 @@ void insert(info_t * root, info_t * newFreeNode ){
 			
 		}
 		else{
-			printf("root->next: %lu, freenode: %lu",root->next, newFreeNode->selfAddress);
+			//printf("root->next: %lu, freenode: %lu",root->next, newFreeNode->selfAddress);
 			if(root->next==NULL)
 			{
 				printf("right insert\n");
@@ -420,8 +462,8 @@ void insert(info_t * root, info_t * newFreeNode ){
 	}
 	
 	adjustMaxSizes(root);
-	printf("adjust sizes\n");
-	printInorder(head);
+	//printf("adjust sizes\n");
+	//printInorder(head);
 
 }
 
@@ -473,6 +515,10 @@ void coalesce(info_t * root, info_t* newFreeNode ){
 				if(root->selfAddress+root->size==successor->selfAddress-hsize){
 					root->size+=successor->size+hsize;
 					successor->parent->next=successor->next;
+					if(successor->next!=NULL)
+						successor->parent->maxRight=successor->next->maxRight;
+					else
+						successor->parent->maxRight=0;
 				}
 				return;
 			}
@@ -482,6 +528,10 @@ void coalesce(info_t * root, info_t* newFreeNode ){
 			if(root->selfAddress+root->size==successor->selfAddress-hsize){
 				root->size+=successor->size+hsize;
 				successor->parent->prev=successor->next;
+				if(successor->next!=NULL)
+					successor->parent->maxRight=successor->next->maxRight;
+				else
+					successor->parent->maxRight=0;
 			}
 
 		}
@@ -497,6 +547,11 @@ void coalesce(info_t * root, info_t* newFreeNode ){
 					root->selfAddress=predecessor->selfAddress;
 					root->size+=predecessor->size+hsize;
 					predecessor->parent->prev=predecessor->prev;
+					if(predecessor->prev!=NULL)
+						predecessor->parent->maxLeft=predecessor->prev->maxLeft;
+					else
+						predecessor->parent->maxLeft=0;
+					
 				}
 				return;
 			}
@@ -506,6 +561,10 @@ void coalesce(info_t * root, info_t* newFreeNode ){
 				root->selfAddress=predecessor->selfAddress;
 				root->size+=predecessor->size+hsize;
 				predecessor->parent->next=predecessor->prev;
+				if(predecessor->prev!=NULL)
+						predecessor->parent->maxLeft=predecessor->prev->maxLeft;
+					else
+						predecessor->parent->maxLeft=0;
 			}
 		}
 
