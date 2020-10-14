@@ -30,7 +30,7 @@ typedef struct FreeListNode{
     size_t maxLeft;
     size_t maxRight;
     size_t size;
-    char* selfAddress;
+    void* selfAddress;
 
 } info_t;
 extern info_t infoNode;
