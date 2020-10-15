@@ -12,7 +12,8 @@
  * and return that if matches the request. NOTE it don't need to search whole tree for eg:
  * if size of root and max size on left and right is less than size requerired it will return from 
  * root node only.asymptotic analysis of search a whole even if we have sorted based on address 
- * in this case is log(n).
+ * in this case is log(n). In worst case it is O(n) though worst case won't occur often as no of 
+ * nodes are reducing while coalescing.
  * 
  * we are doing coalesce and split on tree node if possible.
  * 
