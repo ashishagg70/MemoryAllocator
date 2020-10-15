@@ -217,8 +217,9 @@ void initializeInfoBlock(info_t* info){
  */
 void *mm_realloc(void *ptr, size_t size)
 {		
+	int n=10;
 	if(ptr == NULL){			//memory was not previously allocated
-		return mm_malloc(size);
+		return mm_malloc(n*size);
 	}
 	SPAM(("inside realloc size: %d\n",size));
 	SPAM(("realloc ptr address: %u", ptr));
@@ -226,13 +227,16 @@ void *mm_realloc(void *ptr, size_t size)
 		mm_free(ptr);
 		return NULL;
 	}
-	
-	void * addr = mm_malloc(size);
+	header_t* ptrHeader=(char*)ptr-hsize;
+	if(ptrHeader->size>=size)
+		return ptr;
+
+	void * addr = mm_malloc(n*size);
 	header_t* addrHeader = (char*)addr-hsize;
 	//SPAM(("ptr header realloc: %d",ptrHeader->size));
 	SPAM(("realloced new address: %u", addr));
 	SPAM(("memcpy addresses realloc: %u, %u\n", addr, ptr));
-	memcpy(addr, ptr, size);
+	memcpy(addr, ptr, n*size);
 	//SPAM(("ptr header after memcpy realloc: %d",ptrHeader->size));
 	/*
 	 * This function should also copy the content of the previous memory block into the new block.
