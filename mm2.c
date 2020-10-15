@@ -1,15 +1,26 @@
 /*
- * mm-naive.c - The fastest, least memory-efficient malloc package.
+ * mm2.c - 
+ * Here we have build a binary search tree based on address to maintain freenodes in a tree.
+ * Header of each node is just maintaining size of block and free node's tree information 
+ * is stored in free node's data part.
+ * Tree is modified to maintain max size on right subtree and left subtree to make searching of 
+ * hole faster.
  * 
- * In this naive approach, a block is allocated by simply incrementing
- * the brk pointer.  A block is pure payload. There are no headers or
- * footers.  Blocks are never coalesced or reused. Realloc is
- * implemented directly using mm_malloc and mm_free.
- *
- * NOTE TO STUDENTS: Replace this header comment with your own header
- * comment that gives a high level description of your solution.
+ * searching in tree is following first fit policy.
  * 
- * keep inmind min size for block to keep the info_t in freeblock
+ * whenever a malloc/ realloc request comes it first searches in tree for the appropriate size hole
+ * and return that if matches the request. NOTE it don't need to search whole tree for eg:
+ * if size of root and max size on left and right is less than size requerired it will return from 
+ * root node only.asymptotic analysis of search a whole even if we have sorted based on address 
+ * in this case is log(n).
+ * 
+ * we are doing coalesce and split on tree node if possible.
+ * 
+ * This is better than linklist and naive implementation because here free node insertion
+ * searching of hole is taking amortised log(n) time.
+ * Also in term of utilization it is better than naive because we are doing coalescing and splitting.
+ * 
+ * 
  */
 
 
@@ -62,24 +73,7 @@ void *init_mem_sbrk_break = NULL;
 info_t *head=NULL;
 size_t hsize;
 size_t minBlock;
-/*int main()
-{
-	mem_init();
-	char* addr=mem_sbrk(28);
-	
-	info_t* info=addr;
-	header_t* h1=addr+sizeof(info);
-	h1->size=10;
-	info->maxLeft=10;
-	int x= sizeof(h1);
-	int x2= sizeof(info);
-	
-	printf("addr=%ld\n",addr);
-	printf("addr=%ld\n",(info_t*)addr+1);
-	printf("x=%d, x2=%d\n",h1->size,info->maxLeft);
-	mem_deinit();
-	return 0;
-}*/
+
 int mm_init(void)
 {
 	hsize=sizeof(header_t);
@@ -87,29 +81,17 @@ int mm_init(void)
 	minBlock=sizeof(info_t);
 	head=NULL;
 		
-	//This function is called every time before each test run of the trace.
-	//It should reset the entire state of your malloc or the consecutive trace runs will give wrong answer.	
-	
-
-	/* 
-	 * This function should initialize and reset any data structures used to represent the starting state(empty heap)
-	 * 
-	 * This function will be called multiple time in the driver code "mdriver.c"
-	 */
-	
     return 0;		//Returns 0 on successfull initialization.
 }
 
 //---------------------------------------------------------------------------------------------------------------
 /* 
- * mm_malloc - Allocate a block by incrementing the brk pointer.
- *     Always allocate a block whose size is a multiple of the alignment.
+ * mm_malloc - Allocate a block by incrementing the brk pointer or from free tree.
+ * Always allocate a block whose size is a multiple of the alignment.
  */
 void *mm_malloc(size_t size)
 {	
-	SPAM(("\nraw allocation demand: %d\n", size));
-	//printf("\nraw allocation demand: %d\n", size);
-	//printf("min block size: %d\n", minBlock);
+
 	/* 
 	 * This function should keep track of the allocated memory blocks.
 	 * The block allocation should minimize the number of holes (chucks of unusable memory) in the heap memory.
@@ -123,17 +105,11 @@ void *mm_malloc(size_t size)
 	}
 	if(size<minBlock)
 		size=minBlock;
-	//printpreorder(head);
-	//printf("stuck in malloc\n");
 	if(head!=NULL){
-		//printf("head%lu\n", head->selfAddress);
 		size_t holeSize=((size+7)/8)*8;
 		char * hole=findHole(holeSize);
-		//printTreeSize(head);
-		//printpreorder(head);
 		if(hole!=NULL){
 			header_t *header=hole-hsize;
-			SPAM(("hole return malloc: %u, size: %d , sizeheader: %d", hole, holeSize, header->size ));
 			return hole;
 		}
 			
@@ -142,26 +118,17 @@ void *mm_malloc(size_t size)
 	size+=hsize;
 	
 	size = ((size+7)/8)*8;		//size alligned to 8 bytes
-	//printf("\nallocation size: %d\n", size-hsize);
 	char * newAllocAddress=(char*)mem_sbrk(size);
 	header_t *header=newAllocAddress;
 	header->size=size-hsize;
-	SPAM(("\nmalloc return address: %u\n", newAllocAddress+hsize));
-	//printf("\nmalloc return address: %u, size: %d, end: %u\n", newAllocAddress+hsize, header->size, newAllocAddress+hsize+header->size);
 	return newAllocAddress+hsize;
-	//printf("\nstarting address header: %lu\n", newAllocAddress);
-	//printf("\nstarting address block: %lu\n", newAllocAddress+hsize);
-			//mem_sbrk() is wrapper function for the sbrk() system call. 
-								//Please use mem_sbrk() instead of sbrk() otherwise the evaluation results 
-								//may give wrong results
+
 }
 
 
 void mm_free(void *ptr)
 {
-	SPAM(("\nfree block address: %ul\n", ptr));
 	header_t *header=(char *)ptr - hsize;
-	SPAM(("\nfree block header size: %d\n", header->size));
 	info_t * info = ptr;
 	initializeInfoBlock(info);
 	info->selfAddress=ptr;
@@ -171,14 +138,7 @@ void mm_free(void *ptr)
 		head=info;
 	}
 	else{
-		SPAM(("before adding tree\n"));
-		printpreorder(head);
 		insert(head, info);
-		SPAM(("after adding tree\n"));
-		SPAM(("treesize: %d\n", printTreeSize(head)));
-		printpreorder(head);
-		//printInorder(head);
-		
 	}
 	/* 
 	 * Searches the previously allocated node for memory block with base address ptr.
@@ -187,8 +147,6 @@ void mm_free(void *ptr)
 	 * free(not allocated) then they should be combined into a single block.
 	 * 
 	 * It should also keep track of all the free memory blocks.
-	 * If the freed block is at the end of the heap then you can also decrease the heap size 
-	 * using 'mem_sbrk(-size)'.
 	 */
 }
 
@@ -201,6 +159,7 @@ void initializeInfoBlock(info_t* info){
 	info->selfAddress=NULL;
 	info->size=0;
 }
+
 /*
  * mm_realloc - Implemented simply in terms of mm_malloc and mm_free
  */
@@ -210,8 +169,6 @@ void *mm_realloc(void *ptr, size_t size)
 	if(ptr == NULL){			//memory was not previously allocated
 		return mm_malloc(n*size);
 	}
-	SPAM(("inside realloc size: %d\n",size));
-	SPAM(("realloc ptr address: %u", ptr));
 	if(size == 0){				//new size is zero
 		mm_free(ptr);
 		return NULL;
@@ -222,19 +179,7 @@ void *mm_realloc(void *ptr, size_t size)
 
 	void * addr = mm_malloc(n*size);
 	header_t* addrHeader = (char*)addr-hsize;
-	//SPAM(("ptr header realloc: %d",ptrHeader->size));
-	SPAM(("realloced new address: %u", addr));
-	SPAM(("memcpy addresses realloc: %u, %u\n", addr, ptr));
 	memcpy(addr, ptr, n*size);
-	//SPAM(("ptr header after memcpy realloc: %d",ptrHeader->size));
-	/*
-	 * This function should also copy the content of the previous memory block into the new block.
-	 * You can use 'memcpy()' for this purpose.
-	 * 
-	 * The data structures corresponding to free memory blocks and allocated memory 
-	 * blocks should also be updated.
-	*/
-
 	mm_free(ptr);
 	return addr;
 	
@@ -243,8 +188,6 @@ void *mm_realloc(void *ptr, size_t size)
 void * findHole(size_t holeSize){
 	if(head->size<holeSize && head->maxLeft<holeSize && head->maxRight<holeSize)
 		return NULL;
-	SPAM(("insdie findhole\n"));
-	//printpreorder(head);
 	info_t * curr=head;
 	while(curr!=NULL && curr->size<holeSize){
 		if(curr->maxLeft>=holeSize){
@@ -254,15 +197,11 @@ void * findHole(size_t holeSize){
 			curr=curr->next;
 		}
 	}
-	SPAM(("\nhole choosen to be deleted: %lu\n", curr->selfAddress));
 	char * hole =NULL;
 	if(curr->size>=hsize+holeSize+minBlock){
-		//printf("splitting starting\n");
 		hole = splitNode(curr, holeSize);
-		//printf("splitsuccessful\n");
 	}
 	else{
-		//printf("no split direct delete\n");
 		header_t *h = (char*)curr->selfAddress - hsize;
 		h->size=curr->size;
 		hole = curr->selfAddress;
@@ -273,31 +212,19 @@ void * findHole(size_t holeSize){
 }
 
 void * splitNode(info_t * root, size_t holeSize){
-	SPAM(("in splitnode\n"));
-	/*printf("\nsplit block new address(root->selfAddress): %lu\n", root->selfAddress);
-	printf("split block address(root): %lu\n", root);
-	printf("split block size: %d\n", root->size);
-	printf("holesize: %d\n", holeSize);*/
 	
 	root->size-=(holeSize+hsize);
 	header_t * hole=root->selfAddress+root->size;
 	hole->size=holeSize;
-	//adjust sizes
 	deleteAdujstMaxSizes(root);
-	//adjusting done
-	//printInorder(head);
-	
-	SPAM(("out splitnode\n"));
 	return (char *)hole+hsize;
 
 }
 
 void deleteNode(info_t *root){
 	//adust max
-	SPAM(("in deletel %lu\n", root->selfAddress));
 	if(root->next==NULL || root->prev==NULL){
 		//one child or no child
-		//printf("single or no child delete\n");
 		info_t *child=root->next?root->next:root->prev;
 		size_t maxchildSize=root->next?root->maxRight:root->maxLeft;
 		if(child)
@@ -318,7 +245,6 @@ void deleteNode(info_t *root){
 	}
 	else{
 		// both left and right of node to be delete are not null
-		//printf("both child delete\n");
 		info_t * successor=root->next;
 		while(successor->prev!=NULL)
 			successor = successor->prev;
@@ -361,15 +287,11 @@ void deleteNode(info_t *root){
 			printNode(successor->parent);*/
 		deleteAdujstMaxSizes(successor);			
 	}
-	SPAM(("out deletel %lu\n", root->selfAddress));
 }
 void deleteAdujstMaxSizes(info_t * node){
-	//printf("here %lu\n", node->selfAddress);
-	//printpreorder(head);
 	if(node->parent==NULL)
 		return;
 	info_t * curr=node;
-	//printf("in deleteAdujstMaxSizes: %lu, curr->size: %d\n", curr->selfAddress, curr->size);
 	while(curr->parent!=NULL){	
 		if(curr->parent->prev==curr){
 			curr->parent->maxLeft=curr->maxLeft;
@@ -386,27 +308,21 @@ void deleteAdujstMaxSizes(info_t * node){
 				curr->parent->maxRight=curr->size;
 		}
 		curr=curr->parent;
-		//printf("%lu\n",curr->selfAddress);
 	}
-	//printf("out deleteAdujstMaxSizes\n");
 }
 /*
  * This function will be called when new free block arrives.
 */
 void insert(info_t * root, info_t * newFreeNode ){
-	SPAM(("insert\n"));
 	if((root->selfAddress+root->size==newFreeNode->selfAddress-hsize) || (newFreeNode->selfAddress+newFreeNode->size==root->selfAddress-hsize)){
 		coalesce(root, newFreeNode);
-		SPAM(("after coalesce\n"));
 		return;
 	}
 	else{
-		SPAM(("no coalesce\n"));
 		if(newFreeNode->selfAddress<root->selfAddress)
 		{
 			if(root->prev==NULL)
 			{
-				SPAM(("left insert\n"));
 				root->prev=newFreeNode;
 				root->maxLeft=newFreeNode->size;
 				newFreeNode->parent=root;
