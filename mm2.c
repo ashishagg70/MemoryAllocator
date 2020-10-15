@@ -11,11 +11,7 @@
  * 
  * keep inmind min size for block to keep the info_t in freeblock
  */
-#if 0
-  #define SPAM(a) printf a
-#else
-  #define SPAM(a) 
-#endif
+
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -32,13 +28,6 @@ void deleteAdujstMaxSizes(info_t * node);
 void insert(info_t * root, info_t * newFreeNode );
 void coalesce(info_t * root, info_t* newFreeNode );
 void initializeInfoBlock(info_t* info);
-void copyStructure(info_t *source, info_t* destination);
-void printInorder(info_t * root) ;
-int printTreeSize(info_t * root) ;
-void printpreorder(info_t * root) ;
-void assertStruct(info_t* I1, info_t* I2);
-void printNode(info_t * root);
-int count=0;
 /*********************************************************
  * NOTE TO STUDENTS: Before you do anything else, please
  * provide your team information in the following struct.
@@ -431,10 +420,8 @@ void insert(info_t * root, info_t * newFreeNode ){
 			
 		}
 		else{
-			//printf("root->next: %lu, freenode: %lu",root->next, newFreeNode->selfAddress);
 			if(root->next==NULL)
 			{
-				SPAM(("right insert\n"));
 				root->next=newFreeNode;
 				root->maxRight=newFreeNode->size;
 				newFreeNode->parent=root;
@@ -448,8 +435,6 @@ void insert(info_t * root, info_t * newFreeNode ){
 		}
 	}
 	
-	//printf("adjust sizes\n");
-	//printInorder(head);
 
 }
 
@@ -498,13 +483,8 @@ void coalesce(info_t * root, info_t* newFreeNode ){
 		else
 			deleteAdujstMaxSizes(root);
 		
-		SPAM(("memcopy coalesce addresses: %u, %u\n", root->selfAddress, root));
-		header_t* h =(char*)root-hsize;
-		SPAM(("before memcpy size: %d of address: %u", h->size, root));
 		memcpy(root->selfAddress, root, minBlock);
-		SPAM(("after memcpy size: %d of address: %u", h->size, root));
-		//copyStructure(root, root->selfAddress);
-		//printf("memcopy done%lu\n", root->parent);
+
 		//update parent
 		if(root->parent!=NULL){
 			if(root->parent->prev==root){
@@ -516,70 +496,16 @@ void coalesce(info_t * root, info_t* newFreeNode ){
 		}
 		else
 			head=root->selfAddress;
-			
-
-		//update children
+		//update children	
 		if(root->next!=NULL)
 			root->next->parent=root->selfAddress;
 		if(root->prev!=NULL)
 			root->prev->parent=root->selfAddress;
-		//assertStruct(root->selfAddress, root);
 	}
 }
-void copyStructure(info_t *source, info_t* destination){
-	destination->maxLeft=source->maxLeft;
-	destination->maxRight=source->maxRight;
-	destination->next=source->next;
-	destination->prev=source->prev;
-	destination->parent=source->parent;
-	destination->selfAddress=source->selfAddress;
-	destination->size=source->size;
-}
 
-void assertStruct(info_t* I1, info_t* I2){
 
-	assert(I1->selfAddress==I2->selfAddress);
-	assert(I1->prev==I2->prev);
-	assert(I1->next==I2->next);
-	assert(I1->parent==I2->parent);
-	assert(I1->maxLeft==I2->maxLeft);
-	assert(I1->size==I2->size);
-	assert(I1->maxRight==I2->maxRight);
-}
 
-void assertHeader(info_t * block){
-	header_t* h= (char*)block-hsize;
-	assert(h->size!=0);
-	SPAM(("asserted header size: %d",h->size));
-
-}
-void printNode(info_t * root){
-	SPAM(("maxLeft: %5d, maxright: %5d, start: %10lu, end: %10lu, size: %5d, left: %10lu, right: %10lu, parent: %10lu\n", root->maxLeft,root->maxRight, root->selfAddress, root->selfAddress+root->size, root->size, root->prev,root->next, root->parent));
-	//printf("maxLeft: %5d, maxright: %5d, start: %10lu, end: %10lu, size: %5d, left: %10lu, right: %10lu, parent: %10lu\n", root->maxLeft,root->maxRight, root->selfAddress, root->selfAddress+root->size, root->size, root->prev,root->next, root->parent);
-}
-void printInorder(info_t * root) 
-{ 
-    if (root == NULL) 
-        return; 
-    printInorder(root->prev); 
-    printNode(root);
-    printInorder(root->next);
-} 
-void printpreorder(info_t * root) 
-{ 
-    if (root == NULL) 
-        return; 
-	printNode(root);
-    printpreorder(root->prev); 
-    printpreorder(root->next);
-} 
-int printTreeSize(info_t * root) 
-{ 
-    if (root == NULL)  
-        return 0;  
-	else
-        return(printTreeSize(root->prev) + 1 + printTreeSize(root->next));
-} 
 
 
 
