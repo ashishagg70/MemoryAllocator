@@ -44,66 +44,292 @@ team_t team = {
 
 #define SIZE_T_SIZE (ALIGN(sizeof(size_t)))
 
+
+struct free_element
+{
+	int size;
+	void *down;
+	struct free_element *next_free_element;
+	struct free_element *prev_free_element;
+}*head,use_for_size_only;
+
 /* 
  * mm_init - initialize the malloc package.
  */
 
-void *init_mem_sbrk_break = NULL;
 
 int mm_init(void)
 {
 	
-	//This function is called every time before each test run of the trace.
-	//It should reset the entire state of your malloc or the consecutive trace runs will give wrong answer.	
-	
-
-	/* 
-	 * This function should initialize and reset any data structures used to represent the starting state(empty heap)
-	 * 
-	 * This function will be called multiple time in the driver code "mdriver.c"
-	 */
-	
+	head = NULL;
     return 0;		//Returns 0 on successfull initialization.
 }
 
-//---------------------------------------------------------------------------------------------------------------
-/* 
- * mm_malloc - Allocate a block by incrementing the brk pointer.
- *     Always allocate a block whose size is a multiple of the alignment.
- */
+
+void display()
+{
+	struct free_element *ptr;
+
+	struct free_element *pre_ptr;
+
+	if(head==NULL)
+	{
+			printf("\nList is empty:\n");
+			return;
+	}
+	else
+	{
+		ptr=head;
+		//printf("\nThe List elements__ are:\n");
+		while(ptr!=NULL)
+		{
+			
+			printf("\n| %d - ",ptr->size);
+			printf("%p %p  %p %p| --> ",ptr,ptr->prev_free_element,ptr->next_free_element,ptr->down);
+			//pre_ptr = ptr;
+			ptr=ptr->next_free_element ;
+		}
+		printf("\n\n\n");
+	}
+}
+
+void swap_nodes(struct free_element *A,struct free_element *B)
+{
+	if(A==NULL || B==NULL)
+	{
+		printf("\nWrong Implmentation\n");
+		return;
+	}
+	else
+	{
+		if ( A->prev_free_element )
+			A->prev_free_element->next_free_element = B;
+
+		if ( B->next_free_element )
+			B->next_free_element->prev_free_element = A;
+
+		A->next_free_element  = B->next_free_element;
+		B->prev_free_element = A->prev_free_element;
+
+		B->next_free_element = A;
+		A->prev_free_element = B;
+
+	}
+}
+
+void sort_free_item(struct free_element *element)
+{
+
+	if(element->next_free_element ==NULL && element->prev_free_element == NULL)
+		return;
+	
+	while (element->prev_free_element != NULL)
+	{
+		if(element->prev_free_element > element)
+		{
+			swap_nodes(element->prev_free_element,element);
+			//printf("\nSwapped   %p   %p\n",element,element->next_free_element);
+			if(element->prev_free_element == NULL)
+			{
+				head = element;
+			}
+			//display();
+		}
+		else
+		{
+			break; 
+		}
+	}
+	
+	while (element->next_free_element != NULL)
+	{
+		if(element->next_free_element < element)
+		{
+			if(element->prev_free_element == NULL)
+				head = element->next_free_element;
+
+			swap_nodes(element,element->next_free_element);
+			
+		}
+		else
+		{
+			break;
+		}
+	}
+
+}
+
+void coalese()
+{
+	int header_size;
+	header_size = (((int)sizeof(struct free_element)+7)/8)*8;
+
+	struct free_element *traverse;
+
+	if(head == NULL || head->next_free_element == NULL)
+		return;
+	
+	traverse = head;
+
+	while (traverse!=NULL && traverse->next_free_element != NULL)
+	{
+		if(traverse->down == (void*)traverse->next_free_element - 1)
+		{
+			traverse->size = traverse->size + traverse->next_free_element->size + header_size;
+			traverse->down = traverse->next_free_element->down;
+			traverse->next_free_element = traverse->next_free_element->next_free_element;
+			
+			if(traverse->next_free_element !=NULL)
+				traverse->next_free_element->prev_free_element = traverse;
+		}
+		else
+		{
+			traverse = traverse->next_free_element;
+		}
+	}
+}
+
 void *mm_malloc(size_t size)
-{	
-	/* 
-	 * This function should keep track of the allocated memory blocks.
-	 * The block allocation should minimize the number of holes (chucks of unusable memory) in the heap memory.
-	 * The previously freed memory blocks should be reused.
-	 * If no appropriate free block is available then the increase the heap  size using 'mem_sbrk(size)'.
-	 * Try to keep the heap size as small as possible.
-	 */
+{
+	void *head_ptr,*base_ptr;
+
+	struct free_element *element,*traverse,*min_space;
+	size_t with_header_size;
+	int header_size,extra_space;
+	int min_space_found = 0;
+
+
+	header_size = (((int)sizeof(struct free_element)+7)/8)*8;
+
+	size = (((int)size+7)/8)*8; 
+
+	with_header_size = size + header_size;
 
 	if(size <= 0){		// Invalid request size
 		return NULL;
 	}
-	size = ((size+7)/8)*8;		//size alligned to 8 bytes
+
+
+	traverse = head;
+	min_space = head;
+
+	if(head!=NULL)
+	{
+		traverse = head->next_free_element;
+
+		if(head->size >= (int)size)
+		{
+			min_space_found = 1;
+		}
+	}
+
+	//display();
+	while (traverse!=NULL )
+	{
+		
+		//printf("\nTraverse Size %d\n",min_space->size);
+		if(traverse->size >= (int)size && (traverse->size < min_space->size || !min_space_found))
+		{
+			min_space_found = 1;
+			min_space = traverse;
+		}
+		traverse = traverse->next_free_element;
+	} 
+
 	
-	return mem_sbrk(size);		//mem_sbrk() is wrapper function for the sbrk() system call. 
-								//Please use mem_sbrk() instead of sbrk() otherwise the evaluation results 
-								//may give wrong results
+	
+	if(min_space!=NULL && min_space->size >= (int)size)
+	{
+		
+		extra_space = min_space->size - (int)with_header_size;
+		
+		if(min_space->size == (int)size || extra_space <= 0)
+		{
+			size = (size_t)min_space->size; // overlapping with header
+
+			if(min_space->next_free_element !=NULL)
+				min_space->next_free_element->prev_free_element = min_space->prev_free_element;
+			
+			if(min_space->prev_free_element!=NULL)
+				min_space->prev_free_element->next_free_element = min_space->next_free_element;       
+
+			if(min_space->prev_free_element == NULL)  //Deleting Head
+				head = min_space->next_free_element;   //make new Head
+
+			head_ptr = min_space;
+		}
+		else
+		{
+
+			min_space->size = extra_space;
+			min_space->down = (void*)min_space+min_space->size+header_size-1;
+
+			head_ptr = (void*)min_space + header_size + extra_space;
+		}
+
+	}
+	else
+	{
+		head_ptr = mem_sbrk(with_header_size);
+	}
+
+
+	
+
+	element = (struct free_element *)head_ptr;
+
+	element->size =(int)size;
+	element->next_free_element = NULL;
+	element->prev_free_element = NULL;
+	element->down = (void*)element+element->size+header_size-1;
+
+	base_ptr = head_ptr + header_size;
+
+	//printf("\n Malloc %d",(int)size,header_size,with_header_size);
+	//display();
+	return base_ptr;
 }
 
 
 void mm_free(void *ptr)
 {
-	/* 
-	 * Searches the previously allocated node for memory block with base address ptr.
-	 * 
-	 * It should also perform coalesceing on both ends i.e. if the consecutive memory blocks are 
-	 * free(not allocated) then they should be combined into a single block.
-	 * 
-	 * It should also keep track of all the free memory blocks.
-	 * If the freed block is at the end of the heap then you can also decrease the heap size 
-	 * using 'mem_sbrk(-size)'.
-	 */
+	struct free_element *traverse,*element;
+	void *head_ptr;
+	int header_size;
+
+	header_size = (((int)sizeof(struct free_element)+7)/8)*8;
+
+	head_ptr = (void*)ptr - header_size;
+	element = (struct free_element *)head_ptr;
+	element->next_free_element = NULL;
+	element->prev_free_element = NULL;
+
+	if(head == NULL)
+	{
+		head = element;
+	}
+	else
+	{
+
+		element->next_free_element = head;
+		head->prev_free_element = element;
+
+		head = element;
+	}
+	
+
+
+
+	//printf("\n Freed  %d\n",(int)element->size);
+	//display();
+
+	sort_free_item(element);
+	//printf("\n Sorted %d\n",(int)element->size);
+	//display();
+
+	coalese();
+	//printf("\nTried to coalese\n");
+	//display();
 }
 
 /*
@@ -111,6 +337,10 @@ void mm_free(void *ptr)
  */
 void *mm_realloc(void *ptr, size_t size)
 {	
+	int header_size;
+	struct free_element *element,*new_element;
+	void *head_ptr,*new_ptr;
+
 	size = ((size+7)/8)*8; //8-byte alignement	
 	
 	if(ptr == NULL){			//memory was not previously allocated
@@ -122,16 +352,28 @@ void *mm_realloc(void *ptr, size_t size)
 		return NULL;
 	}
 
-	/*
-	 * This function should also copy the content of the previous memory block into the new block.
-	 * You can use 'memcpy()' for this purpose.
-	 * 
-	 * The data structures corresponding to free memory blocks and allocated memory 
-	 * blocks should also be updated.
-	*/
 
-	mm_free(ptr);
-	return mem_sbrk(size);
+	header_size = (((int)sizeof(struct free_element)+7)/8)*8;
+	head_ptr = (void*)ptr - header_size;
+	element = (struct free_element *)head_ptr;
+
+	//printf("\nrealloc %d  to  %d",element->size,(int)size);
+	if(element->size < (int)size)
+	{
+		new_ptr = mm_malloc(size*10);
+
+		memcpy(new_ptr,ptr,element->size);
+
+		mm_free(ptr);
+
+		return new_ptr;
+	}
+	else
+	{
+		return ptr;
+	}
+
+
 	
 }
 
