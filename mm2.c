@@ -13,7 +13,8 @@
  * if size of root and max size on left and right is less than size requerired it will return from 
  * root node only.asymptotic analysis of search a whole even if we have sorted based on address 
  * in this case is log(n). In worst case it is O(n) though worst case won't occur often as no of 
- * nodes are reducing while coalescing.
+ * nodes are reducing while coalescing if node are inserting on same side there is high probability 
+ * they will be coalesced.
  * 
  * we are doing coalesce and split on tree node if possible.
  * 
@@ -46,7 +47,7 @@ void initializeInfoBlock(info_t* info);
  ********************************************************/
 team_t team = {
     /* Team name */
-    "Convolution",
+    "Team_Rocket",
     /* First member's full name */
     "Ashish Aggarwal",
     /* First member's email address */

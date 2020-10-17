@@ -1,13 +1,5 @@
 /*
- * mm-naive.c - The fastest, least memory-efficient malloc package.
- * 
- * In this naive approach, a block is allocated by simply incrementing
- * the brk pointer.  A block is pure payload. There are no headers or
- * footers.  Blocks are never coalesced or reused. Realloc is
- * implemented directly using mm_malloc and mm_free.
- *
- * NOTE TO STUDENTS: Replace this header comment with your own header
- * comment that gives a high level description of your solution.
+ * mm1.c - Implemented a best-fit + two-sided coalescing memory manager via both header and footer
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,15 +16,15 @@
  ********************************************************/
 team_t team = {
     /* Team name */
-    "team name",
+    "Team_Rocket",
     /* First member's full name */
-    "member 1",
+    "Ashish Aggarwal",
     /* First member's email address */
-    "member_1@cse.iitb.ac.in",
+    "ashishaggarwal@cse.iitb.ac.in",
     /* Second member's full name (leave blank if none) */
-    "member 2",
+    "Ajaykumar Kushwaha",
     /* Second member's email address (leave blank if none) */
-    "member_2@cse.iitb.ac.in"
+    "ajaykushwaha@cse.iitb.ac.in"
 };
 
 /* single word (4) or double word (8) alignment */
@@ -344,7 +336,7 @@ void *mm_realloc(void *ptr, size_t size)
 	size = ((size+7)/8)*8; //8-byte alignement	
 	
 	if(ptr == NULL){			//memory was not previously allocated
-		return mm_malloc(size);
+		return mm_malloc(10*size);
 	}
 	
 	if(size == 0){				//new size is zero
@@ -360,7 +352,7 @@ void *mm_realloc(void *ptr, size_t size)
 	//printf("\nrealloc %d  to  %d",element->size,(int)size);
 	if(element->size < (int)size)
 	{
-		new_ptr = mm_malloc( size);
+		new_ptr = mm_malloc(10*size);
 
 		memcpy(new_ptr,ptr,element->size);
 
