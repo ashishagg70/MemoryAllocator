@@ -360,7 +360,7 @@ void *mm_realloc(void *ptr, size_t size)
 	//printf("\nrealloc %d  to  %d",element->size,(int)size);
 	if(element->size < (int)size)
 	{
-		new_ptr = mm_malloc(size*10);
+		new_ptr = mm_malloc( size);
 
 		memcpy(new_ptr,ptr,element->size);
 
