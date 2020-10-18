@@ -54,7 +54,7 @@ int mm_init(void)
 {
 	
 	head = NULL;
-    return 0;		//Returns 0 on successfull initialization.
+    return 0;		 //Returns 0 on successfull initialization.
 }
 
 
@@ -62,7 +62,7 @@ void display()
 {
 	struct free_element *ptr;
 
-	struct free_element *pre_ptr;
+	struct free_element ;
 
 	if(head==NULL)
 	{
@@ -285,7 +285,7 @@ void *mm_malloc(size_t size)
 
 void mm_free(void *ptr)
 {
-	struct free_element *traverse,*element;
+	struct free_element *element;
 	void *head_ptr;
 	int header_size;
 
@@ -330,20 +330,20 @@ void mm_free(void *ptr)
 void *mm_realloc(void *ptr, size_t size)
 {	
 	int header_size;
-	struct free_element *element,*new_element;
+	struct free_element *element;
 	void *head_ptr,*new_ptr;
 
 	size = ((size+7)/8)*8; //8-byte alignement	
 	
 	if(ptr == NULL){			//memory was not previously allocated
-		return mm_malloc(10*size);
+		return mm_malloc(size);
 	}
 	
 	if(size == 0){				//new size is zero
 		mm_free(ptr);
 		return NULL;
 	}
-
+ 
 
 	header_size = (((int)sizeof(struct free_element)+7)/8)*8;
 	head_ptr = (void*)ptr - header_size;
@@ -352,7 +352,7 @@ void *mm_realloc(void *ptr, size_t size)
 	//printf("\nrealloc %d  to  %d",element->size,(int)size);
 	if(element->size < (int)size)
 	{
-		new_ptr = mm_malloc(10*size);
+		new_ptr = mm_malloc(size*10);
 
 		memcpy(new_ptr,ptr,element->size);
 
