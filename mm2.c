@@ -111,7 +111,7 @@ void *mm_malloc(size_t size)
 		size_t holeSize=((size+7)/8)*8;
 		char * hole=findHole(holeSize);
 		if(hole!=NULL){
-			header_t *header=hole-hsize;
+			//header_t *header=(header_t *)(hole-hsize);
 			return hole;
 		}
 			
@@ -121,7 +121,7 @@ void *mm_malloc(size_t size)
 	
 	size = ((size+7)/8)*8;		//size alligned to 8 bytes
 	char * newAllocAddress=(char*)mem_sbrk(size);
-	header_t *header=newAllocAddress;
+	header_t *header=(header_t *)newAllocAddress;
 	header->size=size-hsize;
 	return newAllocAddress+hsize;
 
@@ -130,7 +130,7 @@ void *mm_malloc(size_t size)
 
 void mm_free(void *ptr)
 {
-	header_t *header=(char *)ptr - hsize;
+	header_t *header=(header_t *)((char *)ptr - hsize);
 	info_t * info = ptr;
 	initializeInfoBlock(info);
 	info->selfAddress=ptr;
@@ -175,12 +175,12 @@ void *mm_realloc(void *ptr, size_t size)
 		mm_free(ptr);
 		return NULL;
 	}
-	header_t* ptrHeader=(char*)ptr-hsize;
+	header_t* ptrHeader=(header_t *)((char*)ptr-hsize);
 	if(ptrHeader->size>=size)
 		return ptr;
 
 	void * addr = mm_malloc(n*size);
-	header_t* addrHeader = (char*)addr-hsize;
+	//header_t* addrHeader = (header_t *)((char*)addr-hsize);
 	memcpy(addr, ptr, n*size);
 	mm_free(ptr);
 	return addr;
@@ -204,7 +204,7 @@ void * findHole(size_t holeSize){
 		hole = splitNode(curr, holeSize);
 	}
 	else{
-		header_t *h = (char*)curr->selfAddress - hsize;
+		header_t *h = (header_t *)((char*)curr->selfAddress - hsize);
 		h->size=curr->size;
 		hole = curr->selfAddress;
 		deleteNode(curr);
